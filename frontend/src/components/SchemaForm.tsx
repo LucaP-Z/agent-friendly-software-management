@@ -1,5 +1,5 @@
 import { Plus, Trash2, X } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -129,8 +129,53 @@ function visible(name: string, obj: any, ctx: FormCtx) {
   return true
 }
 
+const SENTENCE_HINTS: Record<string, string> = {
+  given: 'the starting situation',
+  when: 'the action taken',
+  then: 'the observable result',
+  statement: 'When …, the system shall …',
+}
+
+/** Acceptance criterion as one card that reads like a sentence: keywords in the margin, one line per field. */
+function SentenceCard({ rows, value, onChange }: { rows: { key: string; keyword: string }[]; value: any; onChange: (v: any) => void }) {
+  const base = useId()
+  return (
+    <div className="rounded-[10px] border bg-background px-3.5 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
+      {rows.map((r, i) => (
+        <div key={r.key} className={cn('flex items-baseline gap-3.5 py-2', i < rows.length - 1 && 'border-b')}>
+          <label htmlFor={`${base}-${r.key}`} className="w-12 shrink-0 text-right font-mono text-[10.5px] font-medium tracking-[0.08em] text-emerald-700 dark:text-emerald-400">
+            {r.keyword}
+          </label>
+          <input
+            id={`${base}-${r.key}`}
+            value={value?.[r.key] ?? ''}
+            placeholder={SENTENCE_HINTS[r.key]}
+            onChange={(e) => onChange({ ...value, [r.key]: e.target.value })}
+            className="min-w-0 flex-1 bg-transparent text-[13.5px] leading-6 outline-none placeholder:text-muted-foreground/70"
+          />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function ObjectFields({ node, value, onChange, ctx, cols }: { node: JsonSchema; value: any; onChange: (v: any) => void; ctx: FormCtx; cols?: boolean }) {
   const props = Object.entries(node.properties ?? {}).filter(([k]) => visible(k, value, ctx))
+  if (node.properties && 'format' in node.properties && 'given' in node.properties) {
+    // Acceptance criterion: surface/format (and spans) on top, the sentence below.
+    const head = props.filter(([k]) => !['given', 'when', 'then', 'statement'].includes(k))
+    const rows = value?.format === 'ears' ? [{ key: 'statement', keyword: 'EARS' }] : [{ key: 'given', keyword: 'GIVEN' }, { key: 'when', keyword: 'WHEN' }, { key: 'then', keyword: 'THEN' }]
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {head.map(([k, sub]) => (
+            <Field key={k} name={k} node={sub} value={value?.[k]} onChange={(v) => onChange({ ...value, [k]: v })} ctx={ctx} />
+          ))}
+        </div>
+        <SentenceCard rows={rows} value={value} onChange={onChange} />
+      </div>
+    )
+  }
   return (
     <div className={cn('grid gap-3', cols && 'sm:grid-cols-2')}>
       {props.map(([k, sub]) => (
