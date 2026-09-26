@@ -6,6 +6,7 @@ forms from the JSON Schema these models produce (see `schema.py`), driven by the
 
 - `x-readonly`: shown but not editable (server-managed)
 - `x-ui`: "textarea" | "markdown" (rendering hint)
+- `x-option-labels`: display names for enum values (enums with 3 or fewer options render as a segmented control)
 - `x-link`: entity type keys this field may reference (rendered as a picker)
 """
 
@@ -80,8 +81,11 @@ class AcceptanceCriterion(BaseModel):
     """Testable behavior, Given/When/Then or EARS (AC-01.2.3)."""
 
     id: str = readonly_id(r"^(AC-\d{2,}\.\d+(\.\d+)?)?$")
-    surface: Surface = "both"
-    format: CriterionFormat = Field("gwt", description="gwt = Given/When/Then; ears = a single EARS statement")
+    surface: Surface = Field("both", json_schema_extra=_extra(option_labels={"ui": "UI", "api": "API", "both": "Both"}))
+    format: CriterionFormat = Field(
+        "gwt", description="How this criterion is written",
+        json_schema_extra=_extra(option_labels={"gwt": "Given / When / Then", "ears": "EARS"}),
+    )
     given: str = wide()
     when: str = wide()
     then: str = wide()

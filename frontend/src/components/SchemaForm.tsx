@@ -1,6 +1,7 @@
 import { Trash2, X } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 import { AddRow } from '@/components/AddRow'
+import { SegmentedControl } from '@/components/SegmentedControl'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -265,6 +266,16 @@ export function Field(props: FieldProps) {
   let control: ReactNode
 
   if (node['x-link']) control = <LinkField {...props} />
+  else if (node.enum && node.enum.length <= 3)
+    control = (
+      <SegmentedControl
+        label={title ?? props.name}
+        value={value ?? ''}
+        disabled={!!node['x-readonly']}
+        onChange={onChange}
+        options={node.enum.map((o) => ({ value: o, label: node['x-option-labels']?.[o] ?? o.charAt(0).toUpperCase() + o.slice(1) }))}
+      />
+    )
   else if (node.enum)
     control = (
       <select className={selectClass} value={value ?? ''} disabled={!!node['x-readonly']} onChange={(e) => onChange(e.target.value)}>
