@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -12,6 +12,8 @@ export function LinkProjectDialog({ open, onOpenChange, onLinked }: { open: bool
   const [where, setWhere] = useState<FolderListing | null>(null)
   const [name, setName] = useState('')
   const repo = where?.is_git_root ? where : null
+  const projects = useQuery({ queryKey: ['projects'], queryFn: api.projects })
+  const existing = repo ? projects.data?.find((p) => p.path === repo.path) : undefined
   const folderName = repo?.path.split('/').filter(Boolean).pop()
 
   const link = useMutation({
@@ -37,13 +39,28 @@ export function LinkProjectDialog({ open, onOpenChange, onLinked }: { open: bool
             <Label htmlFor="repo-name">Name (optional)</Label>
             <Input id="repo-name" placeholder={folderName ?? 'Defaults to the folder name'} value={name} onChange={(e) => setName(e.target.value)} />
           </div>
+          {existing && (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              This repository is already a project (“{existing.name}”).
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onOpenChange(false)
+                  onLinked(existing)
+                }}
+              >
+                Open it
+              </Button>
+            </p>
+          )}
           {link.error && <p className="text-sm text-destructive">{(link.error as Error).message}</p>}
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button disabled={!repo || link.isPending} onClick={() => link.mutate()}>
-              {repo ? `Add “${folderName}”` : 'Choose a git repository'}
+            <Button disabled={!repo || !!existing || link.isPending} onClick={() => link.mutate()}>
+              {existing ? 'Already added' : repo ? `Add “${folderName}”` : 'Choose a git repository'}
             </Button>
           </div>
         </div>

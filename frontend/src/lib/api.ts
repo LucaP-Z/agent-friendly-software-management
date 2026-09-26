@@ -1,3 +1,8 @@
+/** Server messages are written for logs ("this repository is already linked"); show them as sentences. */
+export function sentenceCase(msg: string): string {
+  return /^[a-z][a-z']*(\s|$)/.test(msg) ? msg.charAt(0).toUpperCase() + msg.slice(1) : msg
+}
+
 export class ApiError extends Error {
   status: number
   constructor(status: number, message: string) {
@@ -17,7 +22,7 @@ async function req<T>(method: string, url: string, body?: unknown): Promise<T> {
   if (!res.ok) {
     const detail = json?.detail
     const msg = typeof detail === 'string' ? detail : detail ? JSON.stringify(detail) : res.statusText
-    throw new ApiError(res.status, msg)
+    throw new ApiError(res.status, sentenceCase(msg))
   }
   return json as T
 }
