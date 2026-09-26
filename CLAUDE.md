@@ -13,6 +13,7 @@ Platform for spec-driven, agent-built software. This repo is the **platform's ow
 ## Commands
 
 ```bash
+scripts/afsp.zsh {start|stop|restart|status|logs}   # run both servers in the background
 uv run --directory backend pytest                 # backend tests
 npm --prefix frontend run build                   # typecheck + build
 uv run --directory backend uvicorn afsp.main:app --port 8000 --reload

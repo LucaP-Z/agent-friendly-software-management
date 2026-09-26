@@ -9,22 +9,45 @@ The contract is specified in [docs/contract.md](docs/contract.md); the product m
 
 ## Run it
 
-Requires Python ≥ 3.12 with [uv](https://docs.astral.sh/uv/), and Node ≥ 20.
+Requires Python ≥ 3.12 with [uv](https://docs.astral.sh/uv/), and Node ≥ 20 (`brew install uv node`).
+
+Use the launcher script, which runs the API on http://127.0.0.1:8000 and the UI on http://127.0.0.1:5173 in the background:
 
 ```bash
-# terminal 1: API on http://127.0.0.1:8000
+scripts/afsp.zsh start      # start both and open the UI (installs frontend deps on first run)
+scripts/afsp.zsh stop       # stop both
+scripts/afsp.zsh restart    # stop, then start again
+scripts/afsp.zsh status     # what is running
+scripts/afsp.zsh logs       # follow both logs (Ctrl-C to quit)
+```
+
+Logs are in `~/.afsp-run/`. Both servers reload on code changes, so you rarely need `restart`; use it if something gets stuck. The ports are fixed (the UI dev proxy and the API's origin allow-list expect them).
+
+Then open http://127.0.0.1:5173, **Link repository**, pick a git repo root and press **Initialise product structure**.
+
+Linked projects are remembered in `~/.agentic-dev/projects.json`. To use a throwaway registry, e.g. for testing:
+
+```bash
+AFSP_HOME=/tmp/afsp-scratch scripts/afsp.zsh start
+```
+
+Set `AFSP_NO_OPEN=1` if you don't want `start` to open the browser.
+
+<details>
+<summary>Running the servers by hand</summary>
+
+```bash
+# terminal 1: API
 uv run --directory backend uvicorn afsp.main:app --host 127.0.0.1 --port 8000 --reload
 
-# terminal 2: UI on http://127.0.0.1:5173 (proxies /api to the backend)
+# terminal 2: UI (proxies /api to the backend)
 npm --prefix frontend install
 npm --prefix frontend run dev
 ```
 
-Then open http://127.0.0.1:5173, **Link repository**, pick a git repo root and press **Initialise product structure**.
-
-Linked projects are remembered in `~/.agentic-dev/projects.json` (set `AFSP_HOME` to use another folder, e.g. for testing).
-
 To serve the UI from the backend alone: `npm --prefix frontend run build`, and the API server then serves `frontend/dist`.
+
+</details>
 
 ## Tests
 
@@ -38,5 +61,6 @@ npm --prefix frontend run build    # typechecks and builds
 ```
 backend/    FastAPI app (src/afsp) and tests
 frontend/   React + Vite + TypeScript + shadcn/ui
+scripts/    afsp.zsh: start / stop / restart / status / logs
 docs/       contract.md: the UI ↔ files contract
 ```
