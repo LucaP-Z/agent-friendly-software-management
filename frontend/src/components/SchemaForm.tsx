@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { AutoTextarea } from '@/components/AutoTextarea'
 import { cn } from '@/lib/utils'
 import { defaults, fieldLabel, singular } from '@/lib/formSchema'
 import type { JsonSchema, Summary } from '@/lib/api'
@@ -145,12 +145,15 @@ function SentenceCard({ rows, value, onChange }: { rows: { key: string; keyword:
           <label htmlFor={`${base}-${r.key}`} className="w-12 shrink-0 text-right font-mono text-[10.5px] font-medium tracking-[0.08em] text-emerald-700 dark:text-emerald-400">
             {r.keyword}
           </label>
-          <input
+          {/* one logical line: wraps and grows, but Enter and pasted line breaks never add newlines */}
+          <AutoTextarea
             id={`${base}-${r.key}`}
+            minRows={1}
             value={value?.[r.key] ?? ''}
             placeholder={SENTENCE_HINTS[r.key]}
-            onChange={(e) => onChange({ ...value, [r.key]: e.target.value })}
-            className="min-w-0 flex-1 bg-transparent text-[13.5px] leading-6 outline-none placeholder:text-muted-foreground/70"
+            onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
+            onChange={(e) => onChange({ ...value, [r.key]: e.target.value.replace(/\s*\n\s*/g, ' ') })}
+            className="min-w-0 flex-1 rounded-none border-0 bg-transparent p-0 text-[13.5px] leading-6 shadow-none placeholder:text-muted-foreground/70 focus-visible:ring-0 md:text-[13.5px] dark:bg-transparent"
           />
         </div>
       ))}
@@ -265,9 +268,9 @@ export function Field(props: FieldProps) {
     control = node['x-readonly'] ? (
       <p className="font-mono text-sm">{value}</p>
     ) : node['x-ui'] ? (
-      <Textarea
+      <AutoTextarea
         value={value ?? ''}
-        rows={node['x-ui'] === 'markdown' ? 8 : 3}
+        minRows={node['x-ui'] === 'markdown' ? 6 : 3}
         className={cn(node['x-ui'] === 'markdown' && 'font-mono text-[13px]')}
         onChange={(e) => onChange(e.target.value)}
       />

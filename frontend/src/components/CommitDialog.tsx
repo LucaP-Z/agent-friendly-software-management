@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { AutoTextarea } from '@/components/AutoTextarea'
 import { DiffView } from '@/components/DiffView'
 import { useGit } from '@/hooks/queries'
 import { api, type Change } from '@/lib/api'
@@ -148,7 +148,7 @@ export function CommitDialog({ pid, open, onOpenChange }: { pid: string; open: b
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="commit-message">Commit message</Label>
-              <Textarea id="commit-message" rows={2} value={text} onChange={(e) => setMessage(e.target.value)} />
+              <AutoTextarea id="commit-message" minRows={2} value={text} onChange={(e) => setMessage(e.target.value)} />
             </div>
 
             {commit.error && <p className="text-sm text-destructive">{(commit.error as Error).message}</p>}
