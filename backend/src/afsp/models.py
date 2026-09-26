@@ -180,7 +180,16 @@ class Capability(Entity):
     id: str = Field("", pattern=r"^C-\d{2,}\.\d+$", json_schema_extra=_extra(readonly=True))
     priority: Priority = "should"
     depends_on: list[str] = links("capability")
-    budget_usd: float | None = Field(None, ge=0, title="Budget (USD)", description="Early budgets are guesses; estimate vs. actual is tracked")
+    budget_usd: float | None = Field(
+        None, ge=0, title="Budget (USD)",
+        description="Early budgets are guesses. Comparing estimate with actual spend is not implemented yet: for now the budget is only recorded in the file.",
+        json_schema_extra=_extra(planned=True),
+    )
+    budget_tokens_usd: float | None = Field(
+        None, ge=0, title="Of which token costs (USD)",
+        description="The part of the budget expected to be spent on model tokens. Shown once a budget is set.",
+        json_schema_extra=_extra(planned=True),
+    )
     acceptance_criteria: list[AcceptanceCriterion] = Field(default_factory=list)
     use_cases: list[UseCase] = Field(default_factory=list)
     edge_cases: list[EdgeCase] = Field(default_factory=list)

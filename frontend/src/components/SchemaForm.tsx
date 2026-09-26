@@ -21,11 +21,21 @@ export type FormCtx = {
 const selectClass =
   'h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30'
 
-function Row({ label, hint, children, className }: { label?: string; hint?: string; children: ReactNode; className?: string }) {
+function Row({ label, hint, planned, warning, children, className }: { label?: string; hint?: string; planned?: boolean; warning?: string; children: ReactNode; className?: string }) {
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
-      {label && <Label className="text-[13px] font-medium">{label}</Label>}
+      {label && (
+        <div className="flex items-center gap-2">
+          <Label className="text-[13px] font-medium">{label}</Label>
+          {planned && (
+            <Badge variant="outline" className="h-4 px-1.5 text-[10.5px] font-medium text-muted-foreground">
+              Not tracked yet
+            </Badge>
+          )}
+        </div>
+      )}
       {children}
+      {warning && <p className="text-xs text-amber-700 dark:text-amber-400">{warning}</p>}
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   )
@@ -120,6 +130,7 @@ function StringList({ value, onChange, noun }: { value: string[]; onChange: (v: 
 
 function visible(name: string, obj: any, ctx: FormCtx) {
   if (name === 'id') return false
+  if (name === 'budget_tokens_usd') return obj?.budget_usd != null && obj.budget_usd !== ''
   if (name === 'spans') return ctx.entityId.startsWith('F-')
   if (obj && 'format' in obj) {
     if (['given', 'when', 'then'].includes(name)) return obj.format === 'gwt'
@@ -300,9 +311,10 @@ export function Field(props: FieldProps) {
     )
   else return null
 
+  const overBudget = props.name === 'budget_tokens_usd' && typeof value === 'number' && typeof props.ctx.root.budget_usd === 'number' && value > props.ctx.root.budget_usd
   const isSection = node.type === 'array' && node.items?.type !== 'string' && !node['x-link']
   return (
-    <Row label={title} hint={node.description} className={cn(isSection && 'mt-2')}>
+    <Row label={title} hint={node.description} planned={!!node['x-planned']} warning={overBudget ? 'More than the total budget above.' : undefined} className={cn(isSection && 'mt-2')}>
       {control}
     </Row>
   )
@@ -313,7 +325,15 @@ export function SchemaForm({ schema, value, onChange, ctx }: { schema: JsonSchem
   return (
     <div className="flex flex-col gap-4">
       {props.map(([k, sub]) => (
-        <Field key={k} name={k} node={sub} value={value?.[k]} onChange={(v) => onChange({ ...value, [k]: v })} ctx={ctx} />
+        <Field
+          key={k}
+          name={k}
+          node={sub}
+          value={value?.[k]}
+          // clearing the budget also clears the "of which token costs" part, which would otherwise hide with stale data
+          onChange={(v) => onChange(k === 'budget_usd' && v == null ? { ...value, budget_usd: null, budget_tokens_usd: null } : { ...value, [k]: v })}
+          ctx={ctx}
+        />
       ))}
     </div>
   )

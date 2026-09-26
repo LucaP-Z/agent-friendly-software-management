@@ -58,6 +58,7 @@ version: 1
 priority: must
 depends_on: []
 budget_usd:
+budget_tokens_usd:
 acceptance_criteria:
   - id: AC-01.1.1
     surface: both        # ui | api | both
@@ -159,5 +160,6 @@ The server is meant to run on `127.0.0.1` for one user. It rejects requests whos
 
 - Approval and change requests: today `status` and `version` are plain fields and any status can be set. "In PO review" and review comments are operational data and will live in the work database.
 - Feature status roll-up from capabilities (Foundation Spec §3, open question). It will be computed, never stored.
+- Budgets: `budget_usd` and `budget_tokens_usd` ("of which token costs", shown in the UI once a budget is set) are only recorded. Estimate-vs-actual tracking is not implemented; the UI labels both fields "Not tracked yet". The token part above the total budget is flagged in the UI but not rejected.
 - Attachments for designs (`design.mockups` / `flows` are plain references for now).
 - Slices, ADRs, tech specs, bugs, and the spec linter.
