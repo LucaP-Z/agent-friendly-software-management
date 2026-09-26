@@ -218,6 +218,8 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Node / frontend
+# (the Python template above ignores every lib/ folder; the frontend's source lives in src/lib/)
+!frontend/src/lib/
 node_modules/
 frontend/dist/
 
