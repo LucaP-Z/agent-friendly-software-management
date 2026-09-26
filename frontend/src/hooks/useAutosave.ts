@@ -4,8 +4,9 @@ import { ApiError, api, type EntityFull } from '@/lib/api'
 
 export type SaveState =
   | { kind: 'idle' }
+  | { kind: 'dirty' } // edited, waiting for the debounce
   | { kind: 'saving' }
-  | { kind: 'saved' }
+  | { kind: 'saved'; at: number }
   | { kind: 'error'; message: string }
   | { kind: 'conflict' }
 
@@ -44,7 +45,7 @@ export function useAutosave(pid: string, initial: EntityFull) {
       const res = await api.save(pid, initial.id, hashRef.current, draftRef.current)
       hashRef.current = res.hash
       known.current.add(res.hash)
-      setState({ kind: 'saved' })
+      setState(dirty.current ? { kind: 'dirty' } : { kind: 'saved', at: Date.now() })
       qc.invalidateQueries({ queryKey: ['entities', pid] })
       qc.invalidateQueries({ queryKey: ['git', pid] })
     } catch (e) {
@@ -68,6 +69,7 @@ export function useAutosave(pid: string, initial: EntityFull) {
       setDraft(next)
       dirty.current = true
       if (paused.current) return
+      setState({ kind: 'dirty' })
       clearTimeout(timer.current)
       timer.current = setTimeout(() => ((timer.current = undefined), void save()), DEBOUNCE_MS)
     },

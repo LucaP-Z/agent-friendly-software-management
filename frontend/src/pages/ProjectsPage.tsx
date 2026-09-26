@@ -3,6 +3,7 @@ import { AlertTriangle, FolderGit2, Plus, Unlink } from 'lucide-react'
 import { useState } from 'react'
 import { LinkProjectDialog } from '@/components/LinkProjectDialog'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useOpenProject } from '@/hooks/useOpenProject'
 import { api, lastProject, type Project } from '@/lib/api'
 
@@ -59,14 +60,21 @@ export default function ProjectsPage() {
             <Button variant="outline" size="sm" disabled={p.exists === false} onClick={() => open(p.id)}>
               Open
             </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`Unlink ${p.name}`}
-              onClick={() => confirm(`Unlink "${p.name}"? The repository and its files are left untouched.`) && unlink.mutate(p)}
-            >
-              <Unlink />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Unlink ${p.name}`}
+                    onClick={() => confirm(`Unlink "${p.name}"? The repository and its files are left untouched.`) && unlink.mutate(p)}
+                  />
+                }
+              >
+                <Unlink />
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Unlink from this app. Your repository and its files are not deleted.</TooltipContent>
+            </Tooltip>
           </li>
         ))}
       </ul>

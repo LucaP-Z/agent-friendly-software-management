@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Loader2, Pencil } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { SchemaForm } from '@/components/SchemaForm'
@@ -10,32 +10,41 @@ import { useEntities, useSchema } from '@/hooks/queries'
 import { api, type EntityFull, type TypeInfo } from '@/lib/api'
 
 function SaveIndicator({ state }: { state: SaveState }) {
-  const base = 'flex items-center gap-1.5 text-xs'
-  if (state.kind === 'saving')
-    return (
-      <span className={`${base} text-muted-foreground`}>
-        <Loader2 className="size-3 animate-spin" /> Saving…
-      </span>
-    )
-  if (state.kind === 'saved')
-    return (
-      <span className={`${base} text-emerald-600`}>
-        <CheckCircle2 className="size-3" /> Saved to file
-      </span>
-    )
-  if (state.kind === 'error')
-    return (
-      <span className={`${base} text-destructive`} title={state.message}>
-        <AlertTriangle className="size-3" /> Not saved
-      </span>
-    )
-  if (state.kind === 'conflict')
-    return (
-      <span className={`${base} text-amber-600`}>
-        <AlertTriangle className="size-3" /> Conflict
-      </span>
-    )
-  return <span className={`${base} text-muted-foreground`}>Autosave on</span>
+  const pill = 'flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium'
+  switch (state.kind) {
+    case 'dirty':
+      return (
+        <span className={`${pill} bg-amber-500/15 text-amber-700 dark:text-amber-400`}>
+          <Pencil className="size-3" /> Unsaved changes…
+        </span>
+      )
+    case 'saving':
+      return (
+        <span className={`${pill} bg-sky-500/15 text-sky-700 dark:text-sky-400`}>
+          <Loader2 className="size-3 animate-spin" /> Saving…
+        </span>
+      )
+    case 'saved':
+      return (
+        <span className={`${pill} bg-emerald-500/15 text-emerald-700 dark:text-emerald-400`}>
+          <CheckCircle2 className="size-3" /> Saved to file · {new Date(state.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+        </span>
+      )
+    case 'error':
+      return (
+        <span className={`${pill} bg-destructive/15 text-destructive`} title={state.message}>
+          <AlertTriangle className="size-3" /> Not saved
+        </span>
+      )
+    case 'conflict':
+      return (
+        <span className={`${pill} bg-orange-500/15 text-orange-700 dark:text-orange-400`}>
+          <AlertTriangle className="size-3" /> Conflict — autosave paused
+        </span>
+      )
+    default:
+      return <span className={`${pill} bg-muted text-muted-foreground`}>Autosave on</span>
+  }
 }
 
 function Editor({ pid, initial, latest, type }: { pid: string; initial: EntityFull; latest?: EntityFull; type: TypeInfo }) {

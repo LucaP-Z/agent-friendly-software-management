@@ -160,6 +160,8 @@ def allocate_id(body: AllocateId, ps: tuple[Project, ProductStore] = Depends(pro
 class Commit(BaseModel):
     message: str
     paths: list[str]
+    branch: str | None = None  # switch to (or create) this branch before committing
+    create_branch: bool = False
 
 
 @router.get("/projects/{project_id}/git")
@@ -168,6 +170,7 @@ def git_status(ps: tuple[Project, ProductStore] = Depends(project_store)) -> dic
     items = gitops.changes(store.root)
     return {
         "branch": gitops.branch(store.root),
+        "branches": gitops.branches(store.root),
         "changes": [asdict(c) for c in items],
         "suggested_message": gitops.suggest_message(items),
     }
@@ -176,7 +179,7 @@ def git_status(ps: tuple[Project, ProductStore] = Depends(project_store)) -> dic
 @router.post("/projects/{project_id}/git/commit")
 def git_commit(body: Commit, ps: tuple[Project, ProductStore] = Depends(project_store)) -> dict[str, str]:
     _, store = ps
-    return {"commit": gitops.commit(store.root, body.paths, body.message)}
+    return {"commit": gitops.commit(store.root, body.paths, body.message, body.branch, body.create_branch)}
 
 
 # ----------------------------------------------------------- folder browser

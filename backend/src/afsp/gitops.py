@@ -96,8 +96,22 @@ def suggest_message(items: list[Change]) -> str:
     return "spec: " + "; ".join(parts) if parts else "spec: update"
 
 
-def commit(root: Path, paths: list[str], message: str) -> str:
-    """Commit exactly `paths` (all must be pending changes under product/). Returns the short hash."""
+def branches(root: Path) -> list[str]:
+    """Local branch names (the current branch is included even in a repo with no commits yet)."""
+    found = _git(root, "for-each-ref", "--format=%(refname:short)", "refs/heads").split()
+    current = branch(root)
+    if current != "(detached)" and current not in found:
+        found.append(current)
+    return sorted(found)
+
+
+def commit(root: Path, paths: list[str], message: str, target_branch: str | None = None, create_branch: bool = False) -> str:
+    """Commit exactly `paths` (all must be pending changes under product/). Returns the short hash.
+
+    If `target_branch` differs from the current branch, switch to it first (creating it when
+    `create_branch`). Everything is validated before anything is changed; uncommitted files
+    travel with the switch, and git refuses it if they would be overwritten.
+    """
     message = message.strip()
     if not message:
         raise GitError("commit message is empty")
@@ -107,6 +121,34 @@ def commit(root: Path, paths: list[str], message: str) -> str:
     unknown = [p for p in paths if p not in pending]
     if unknown:
         raise GitError(f"not pending changes under {PRODUCT_DIR}/: {', '.join(unknown)}")
+
+    current = branch(root)
+    switch: list[str] | None = None
+    if target_branch and target_branch != current:
+        existing = branches(root)
+        if create_branch:
+            if target_branch in existing:
+                raise GitError(f"branch {target_branch!r} already exists")
+            if target_branch.startswith("-") or not _check_ref(root, target_branch):
+                raise GitError(f"{target_branch!r} is not a valid branch name")
+            switch = ["switch", "-c", target_branch]
+        else:
+            if target_branch not in existing:
+                raise GitError(f"no such branch {target_branch!r}")
+            switch = ["switch", target_branch]
+    elif create_branch and target_branch == current:
+        raise GitError(f"branch {target_branch!r} already exists")
+
+    if switch:
+        _git(root, *switch)
     _git(root, "add", "--all", "--", *paths)
     _git(root, "commit", "-m", message, "--", *paths, timeout=60)
     return _git(root, "rev-parse", "--short", "HEAD").strip()
+
+
+def _check_ref(root: Path, name: str) -> bool:
+    try:
+        _git(root, "check-ref-format", "--branch", name)
+        return True
+    except GitError:
+        return False

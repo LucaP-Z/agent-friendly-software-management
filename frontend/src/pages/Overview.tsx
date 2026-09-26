@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, FolderPlus } from 'lucide-react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useEntities, useSchema, useStatus } from '@/hooks/queries'
 import { api } from '@/lib/api'
@@ -46,10 +46,14 @@ export default function Overview() {
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {schema.data?.types.map((t) => (
-              <div key={t.key} className="rounded-xl border p-4">
+              <Link
+                key={t.key}
+                to={`t/${t.key}`}
+                className="rounded-xl border p-4 transition-colors hover:border-foreground/30 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
                 <p className="text-2xl font-semibold">{entities.data?.entities.filter((e) => e.type === t.key).length ?? 0}</p>
-                <p className="text-sm text-muted-foreground">{t.plural}</p>
-              </div>
+                <p className="text-sm text-muted-foreground">{t.key === 'glossary' ? 'Glossary entries' : t.plural}</p>
+              </Link>
             ))}
           </div>
           {!!entities.data?.problems.length && (
