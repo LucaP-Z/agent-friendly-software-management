@@ -209,6 +209,31 @@ def commit(root: Path, paths: list[str], message: str, target_branch: str | None
     return _git(root, "rev-parse", "--short", "HEAD").strip()
 
 
+def switch_branch(root: Path, name: str) -> str:
+    """`git switch <name>` to an existing local branch. Returns the branch now checked out.
+
+    Git refuses (and changes nothing) if uncommitted changes would be overwritten. That is
+    reported as-is minus git's own how-to-fix hints: the platform does not stash or discard.
+    """
+    if name not in branches(root):
+        raise GitError(f"no such branch {name!r}")
+    if name == branch(root):
+        return name
+    try:
+        _git(root, "switch", name)
+    except GitError as e:
+        raise GitError(_without_hints(str(e)) or f"git could not switch to {name!r}") from e
+    return name
+
+
+def _without_hints(message: str) -> str:
+    """Drop git's advice lines ("Please commit your changes or stash them…", "Aborting", "hint: …")."""
+    kept = [ln for ln in message.splitlines() if ln.strip() and not ln.lower().startswith(("please ", "aborting", "hint:"))]
+    if kept and kept[0].lower().startswith(("error: ", "fatal: ")):
+        kept[0] = kept[0].split(": ", 1)[1]
+    return "\n".join(kept)
+
+
 def _check_ref(root: Path, name: str) -> bool:
     try:
         _git(root, "check-ref-format", "--branch", name)

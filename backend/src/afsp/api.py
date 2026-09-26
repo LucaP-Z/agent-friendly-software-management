@@ -176,6 +176,16 @@ def git_status(ps: tuple[Project, ProductStore] = Depends(project_store)) -> dic
     }
 
 
+class SwitchBranch(BaseModel):
+    branch: str
+
+
+@router.post("/projects/{project_id}/git/switch")
+def git_switch(body: SwitchBranch, ps: tuple[Project, ProductStore] = Depends(project_store)) -> dict[str, str]:
+    """`git switch` to an existing local branch; refused by git (422) if it would overwrite uncommitted work."""
+    return {"branch": gitops.switch_branch(ps[1].root, body.branch)}
+
+
 @router.get("/projects/{project_id}/git/diff")
 def git_diff(path: str, ps: tuple[Project, ProductStore] = Depends(project_store)) -> dict[str, Any]:
     """Diff of one pending file (must be a current pending change under product/)."""

@@ -134,7 +134,8 @@ Not enforced yet: completeness (e.g. at least one criterion), testability wordin
 - Auto-save only writes files. **Commits happen only when the user presses Commit.**
 - The Commit dialog lists uncommitted changes under `product/` (added / modified / deleted), all pre-selected. The message is pre-filled (`spec: initialise product structure; add P-01, C-01.2; update N-01`) and editable.
 - The server commits **only the selected paths** (`git add --all -- <paths>` then `git commit -m … -- <paths>`). Anything else staged or modified stays untouched. Paths must be current pending changes under `product/`; anything else is refused.
-- **Branch choice.** The dialog defaults to the current branch and lists the local branches plus *New branch…*. Choosing another branch (or a new name) makes the server run `git switch <branch>` (or `git switch -c <name>`) **before** committing; the uncommitted files travel with the switch, and git itself refuses it if they would be overwritten. Everything (paths, message, branch name, existence) is validated first, so a bad choice changes nothing. The platform never switches branches at any other time.
+- **Branch choice.** The dialog defaults to the current branch and lists the local branches plus *New branch…*. Choosing another branch (or a new name) makes the server run `git switch <branch>` (or `git switch -c <name>`) **before** committing; the uncommitted files travel with the switch, and git itself refuses it if they would be overwritten. Everything (paths, message, branch name, existence) is validated first, so a bad choice changes nothing. The only other time the platform switches branches is when you pick one from the branch menu in the header (below).
+- **Branch menu (header).** Lists the local branches and runs `git switch <branch>` on the one you pick, then reloads everything from disk (files can differ between branches). Uncommitted files travel with the switch. If git refuses because uncommitted changes would be overwritten, nothing changes and the UI shows git's message naming the files, without git's how-to-fix advice: the platform never stashes, discards or force-switches. Only existing local branches can be chosen.
 - Nothing is ever pushed.
 - Commits use the repository's own git identity. If none is configured, git's error is shown in the dialog.
 
@@ -149,7 +150,8 @@ Not enforced yet: completeness (e.g. at least one criterion), testability wordin
 | `GET/POST /api/projects/{id}/entities` | List summaries plus file problems; create (`type`, `title`, `parent` for capabilities) |
 | `GET/PUT /api/projects/{id}/entities/{eid}` | Load (with `hash`); save (`base_hash`, `data`) |
 | `POST /api/projects/{id}/ids` | Reserve a nested id (`key`, e.g. `AC-01.2`) |
-| `GET /api/projects/{id}/git`, `POST …/git/commit` | Pending changes, branches and suggested message; commit selected paths (optionally on another or new branch) |
+| `POST /api/projects/{id}/git/switch` | `git switch` to an existing local branch (422 with git's message if refused) |
+| `GET /api/projects/{id}/git`, `GET …/git/diff`, `POST …/git/commit` | Pending changes, branches and suggested message; commit selected paths (optionally on another or new branch) |
 | `GET /api/fs/browse` | Server-side folder picker |
 
 ## 9. Local-only safety

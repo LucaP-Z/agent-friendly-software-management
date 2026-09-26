@@ -120,3 +120,54 @@ def test_diff_of_deleted_file(client: _Client, project: str, repo: _Path):
 def test_diff_only_for_pending_paths(client: _Client, project: str, repo: _Path, bad: str):
     (repo / "secret.txt").write_text("x")
     assert client.get(f"/api/projects/{project}/git/diff", params={"path": bad}).status_code == 422
+
+
+# ---------------------------------------------------------------- switching branches
+
+
+def _git(repo: _Path, *args: str) -> str:
+    return _sp.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True).stdout
+
+
+def test_switch_to_other_branch_moves_files_with_it(client: _Client, project: str, repo: _Path):
+    base = f"/api/projects/{project}"
+    client.post(f"{base}/entities", json={"type": "persona", "title": "A"})
+    _commit_all(repo)
+    _git(repo, "switch", "-q", "-c", "other")
+    client.post(f"{base}/entities", json={"type": "persona", "title": "B"})
+    _commit_all(repo)
+    assert len(client.get(f"{base}/entities").json()["entities"]) == 2
+    r = client.post(f"{base}/git/switch", json={"branch": "main"})
+    assert r.status_code == 200 and r.json() == {"branch": "main"} and _current(repo) == "main"
+    assert [e["id"] for e in client.get(f"{base}/entities").json()["entities"]] == ["P-01"]  # files are what main holds
+    assert client.get(f"/api/projects/{project}/status").json()["branch"] == "main"
+
+
+def test_switch_to_current_branch_is_a_no_op(client: _Client, project: str, repo: _Path):
+    _commit_all(repo)
+    assert client.post(f"/api/projects/{project}/git/switch", json={"branch": "main"}).status_code == 200
+
+
+@_pytest.mark.parametrize("bad", ["nope", "", "-c", "main; rm -rf /", "../x"])
+def test_switch_to_unknown_branch_is_refused(client: _Client, project: str, repo: _Path, bad: str):
+    _commit_all(repo)
+    r = client.post(f"/api/projects/{project}/git/switch", json={"branch": bad})
+    assert r.status_code == 422 and _current(repo) == "main"
+
+
+def test_switch_blocked_by_uncommitted_changes_reports_files_and_changes_nothing(client: _Client, project: str, repo: _Path):
+    base = f"/api/projects/{project}"
+    client.post(f"{base}/entities", json={"type": "persona", "title": "A"})
+    _commit_all(repo)
+    f = repo / "product/personas/P-01-a.md"
+    _git(repo, "switch", "-q", "-c", "other")
+    f.write_text(f.read_text().replace("role: ''", "role: on-other"))
+    _commit_all(repo)
+    _git(repo, "switch", "-q", "main")
+    f.write_text(f.read_text().replace("role: ''", "role: my-uncommitted-edit"))  # would be overwritten by `other`
+    r = client.post(f"{base}/git/switch", json={"branch": "other"})
+    assert r.status_code == 422
+    msg = r.json()["detail"]
+    assert "P-01-a.md" in msg and "overwritten" in msg
+    assert "stash" not in msg.lower() and "abort" not in msg.lower() and "please" not in msg.lower()
+    assert _current(repo) == "main" and "my-uncommitted-edit" in f.read_text()  # nothing lost, nothing moved

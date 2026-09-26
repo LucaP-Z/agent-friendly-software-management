@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { Check, ChevronDown, ChevronRight, FolderGit2, GitBranch, GitCommitHorizontal, Plus, Settings2 } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, FolderGit2, GitCommitHorizontal, Plus, Settings2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Navigate, Outlet, useNavigate, useParams } from 'react-router-dom'
+import { BranchMenu } from '@/components/BranchMenu'
 import { CommitDialog } from '@/components/CommitDialog'
 import { NewEntityDialog } from '@/components/NewEntityDialog'
-import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useEntities, useGit, useSchema, useStatus } from '@/hooks/queries'
@@ -109,12 +109,7 @@ export default function ProjectLayout() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        {status.data && (
-          <Badge variant="outline" className="gap-1 font-mono">
-            <GitBranch className="size-3" />
-            {status.data.branch}
-          </Badge>
-        )}
+        {status.data && <BranchMenu pid={pid} current={status.data.branch} branches={git.data?.branches ?? []} />}
         <div className="ml-auto">
           <Button variant={pending ? 'default' : 'outline'} size="sm" disabled={!initialized} onClick={() => setCommitting(true)}>
             <GitCommitHorizontal /> Commit{pending ? ` (${pending})` : ''}
