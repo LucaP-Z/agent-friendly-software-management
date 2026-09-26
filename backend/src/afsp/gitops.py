@@ -13,10 +13,15 @@ class GitError(RuntimeError):
     pass
 
 
+MAX_DIFF_CHARS = 200_000
+
+
 @dataclass
 class Change:
     path: str  # repo-relative, posix
     status: str  # "added" | "modified" | "deleted"
+    added: int = 0  # lines added / removed (for the commit dialog)
+    removed: int = 0
 
 
 def _git(root: Path, *args: str, timeout: int = 30) -> str:
@@ -61,7 +66,65 @@ def changes(root: Path) -> list[Change]:
         else:
             status = "modified"
         result.append(Change(path, status))
-    return sorted(result, key=lambda c: c.path)
+    result.sort(key=lambda c: c.path)
+    _fill_stats(root, result)
+    return result
+
+
+def _has_head(root: Path) -> bool:
+    try:
+        _git(root, "rev-parse", "--verify", "-q", "HEAD")
+        return True
+    except GitError:
+        return False
+
+
+def _tracked(root: Path, path: str) -> bool:
+    try:
+        _git(root, "ls-files", "--error-unmatch", "--", path)
+        return True
+    except GitError:
+        return False
+
+
+def _read_lines(root: Path, path: str) -> list[str]:
+    try:
+        return (root / path).read_bytes()[:MAX_DIFF_CHARS].decode("utf-8", "replace").splitlines()
+    except OSError:
+        return []
+
+
+def _fill_stats(root: Path, items: list[Change]) -> None:
+    """Attach +/- line counts: from numstat for tracked files, by counting lines for new ones."""
+    if not items:
+        return
+    numstat: dict[str, tuple[int, int]] = {}
+    if _has_head(root):
+        for rec in _git(root, "diff", "--numstat", "-z", "HEAD", "--", PRODUCT_DIR).split("\0"):
+            parts = rec.split("\t", 2)
+            if len(parts) == 3 and parts[0].isdigit() and parts[1].isdigit():
+                numstat[parts[2]] = (int(parts[0]), int(parts[1]))
+    for c in items:
+        if c.path in numstat:
+            c.added, c.removed = numstat[c.path]
+        elif c.status == "added":
+            c.added = len(_read_lines(root, c.path))
+
+
+def diff(root: Path, path: str) -> tuple[str, bool]:
+    """Unified diff hunks of one pending file against HEAD. Returns (text, truncated)."""
+    pending = {c.path: c for c in changes(root)}
+    if path not in pending:
+        raise GitError(f"not a pending change under {PRODUCT_DIR}/: {path}")
+    if not _tracked(root, path) or not _has_head(root):
+        lines = _read_lines(root, path)
+        text = f"@@ -0,0 +1,{len(lines)} @@\n" + "\n".join("+" + ln for ln in lines) if lines else ""
+    else:
+        raw = _git(root, "diff", "--no-color", "-U3", "HEAD", "--", path)
+        text = raw[raw.index("@@"):] if "@@" in raw else ""
+    if len(text) > MAX_DIFF_CHARS:
+        return text[:MAX_DIFF_CHARS], True
+    return text, False
 
 
 _ID = re.compile(r"^([A-Z]+-\d{2,}(?:\.\d+)?)(?:-|\.md$)")

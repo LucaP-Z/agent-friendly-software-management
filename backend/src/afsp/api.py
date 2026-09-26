@@ -176,6 +176,13 @@ def git_status(ps: tuple[Project, ProductStore] = Depends(project_store)) -> dic
     }
 
 
+@router.get("/projects/{project_id}/git/diff")
+def git_diff(path: str, ps: tuple[Project, ProductStore] = Depends(project_store)) -> dict[str, Any]:
+    """Diff of one pending file (must be a current pending change under product/)."""
+    text, truncated = gitops.diff(ps[1].root, path)
+    return {"path": path, "diff": text, "truncated": truncated}
+
+
 @router.post("/projects/{project_id}/git/commit")
 def git_commit(body: Commit, ps: tuple[Project, ProductStore] = Depends(project_store)) -> dict[str, str]:
     _, store = ps

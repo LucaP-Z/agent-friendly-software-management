@@ -71,3 +71,52 @@ def test_same_branch_is_a_plain_commit(client: _Client, project: str, repo: _Pat
     base, paths = _prep(client, project)
     assert client.post(f"{base}/git/commit", json={"message": "m", "paths": paths, "branch": "main"}).status_code == 200
     assert _current(repo) == "main"
+
+
+# ---------------------------------------------------------------- diff preview
+
+
+def _commit_all(repo: _Path) -> None:
+    _sp.run(["git", "add", "-A"], cwd=repo, check=True)
+    _sp.run(["git", "commit", "-q", "-m", "base"], cwd=repo, check=True)
+
+
+def test_diff_of_modified_file_and_counts(client: _Client, project: str, repo: _Path):
+    base = f"/api/projects/{project}"
+    client.post(f"{base}/entities", json={"type": "persona", "title": "A"})
+    _commit_all(repo)
+    f = repo / "product/personas/P-01-a.md"
+    f.write_text(f.read_text().replace("role: ''", "role: CFO"))
+    g = client.get(f"{base}/git").json()
+    ch = next(c for c in g["changes"] if c["path"] == "product/personas/P-01-a.md")
+    assert (ch["status"], ch["added"], ch["removed"]) == ("modified", 1, 1)
+    d = client.get(f"{base}/git/diff", params={"path": ch["path"]}).json()
+    assert d["diff"].startswith("@@") and "-role: ''" in d["diff"] and "+role: CFO" in d["diff"] and not d["truncated"]
+
+
+def test_diff_of_new_file_shows_every_line_added(client: _Client, project: str):
+    base = f"/api/projects/{project}"
+    client.post(f"{base}/entities", json={"type": "persona", "title": "A"})  # repo has no commits: everything is new
+    g = client.get(f"{base}/git").json()
+    ch = next(c for c in g["changes"] if c["path"] == "product/personas/P-01-a.md")
+    d = client.get(f"{base}/git/diff", params={"path": ch["path"]}).json()["diff"]
+    lines = d.splitlines()
+    assert ch["status"] == "added" and ch["added"] == len(lines) - 1 > 0 and ch["removed"] == 0
+    assert lines[0] == f"@@ -0,0 +1,{ch['added']} @@" and all(ln.startswith("+") for ln in lines[1:])
+
+
+def test_diff_of_deleted_file(client: _Client, project: str, repo: _Path):
+    base = f"/api/projects/{project}"
+    client.post(f"{base}/entities", json={"type": "persona", "title": "A"})
+    _commit_all(repo)
+    (repo / "product/personas/P-01-a.md").unlink()
+    ch = next(c for c in client.get(f"{base}/git").json()["changes"] if c["path"].endswith("P-01-a.md"))
+    assert ch["status"] == "deleted" and ch["removed"] > 0 and ch["added"] == 0
+    d = client.get(f"{base}/git/diff", params={"path": ch["path"]}).json()["diff"]
+    assert "-id: P-01" in d
+
+
+@_pytest.mark.parametrize("bad", ["secret.txt", "../etc/passwd", "product/personas", "/etc/passwd", "product/nope.md"])
+def test_diff_only_for_pending_paths(client: _Client, project: str, repo: _Path, bad: str):
+    (repo / "secret.txt").write_text("x")
+    assert client.get(f"/api/projects/{project}/git/diff", params={"path": bad}).status_code == 422
