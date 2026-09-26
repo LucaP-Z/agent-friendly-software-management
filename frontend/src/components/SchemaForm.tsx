@@ -1,12 +1,13 @@
-import { Plus, Trash2, X } from 'lucide-react'
+import { Trash2, X } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
+import { AddRow } from '@/components/AddRow'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-import { defaults, fieldLabel } from '@/lib/formSchema'
+import { defaults, fieldLabel, singular } from '@/lib/formSchema'
 import type { JsonSchema, Summary } from '@/lib/api'
 
 export type FormCtx = {
@@ -94,7 +95,7 @@ type FieldProps = {
   ctx: FormCtx
 }
 
-function StringList({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+function StringList({ value, onChange, noun }: { value: string[]; onChange: (v: string[]) => void; noun: string }) {
   const items = value ?? []
   const [added, setAdded] = useState(false)
   return (
@@ -112,9 +113,7 @@ function StringList({ value, onChange }: { value: string[]; onChange: (v: string
           </Button>
         </div>
       ))}
-      <Button type="button" variant="outline" size="sm" className="self-start" onClick={() => (setAdded(true), onChange([...items, '']))}>
-        <Plus /> Add
-      </Button>
+      <AddRow compact label={`Add ${noun}`} onClick={() => (setAdded(true), onChange([...items, '']))} />
     </div>
   )
 }
@@ -241,9 +240,7 @@ function ObjectList({ name, node, value, onChange, ctx }: FieldProps) {
           <ObjectFields node={itemSchema} value={item} ctx={ctx} cols onChange={(v) => onChange(items.map((x, j) => (j === i ? v : x)))} />
         </div>
       ))}
-      <Button type="button" variant="outline" size="sm" className="self-start" onClick={add}>
-        <Plus /> Add {(itemSchema.title ?? 'item').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()}
-      </Button>
+      <AddRow label={`Add ${(itemSchema.title ?? 'item').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()}`} onClick={add} />
     </div>
   )
 }
@@ -289,7 +286,7 @@ export function Field(props: FieldProps) {
         onChange={(e) => onChange(e.target.value === '' ? (node.nullable ? null : 0) : Number(e.target.value))}
       />
     )
-  else if (node.type === 'array' && node.items?.type === 'string') control = <StringList value={value} onChange={onChange} />
+  else if (node.type === 'array' && node.items?.type === 'string') control = <StringList value={value} onChange={onChange} noun={singular(title ?? 'item')} />
   else if (node.type === 'array') control = <ObjectList {...props} />
   else if (node.type === 'object')
     return (
