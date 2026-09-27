@@ -205,8 +205,25 @@ def commit(root: Path, paths: list[str], message: str, target_branch: str | None
     if switch:
         _git(root, *switch)
     _git(root, "add", "--all", "--", *paths)
-    _git(root, "commit", "-m", message, "--", *paths, timeout=60)
+    try:
+        _git(root, "commit", "-m", message, "--", *paths, timeout=60)
+    except GitError as e:
+        raise GitError(_friendly_identity_error(str(e)) or str(e)) from e
     return _git(root, "rev-parse", "--short", "HEAD").strip()
+
+
+_IDENTITY_HINT = re.compile(r"tell me who you are|unable to auto-detect (?:a )?(?:user)?name|unable to auto-detect email address", re.I)
+
+
+def _friendly_identity_error(raw: str) -> str | None:
+    """Git's "Please tell me who you are" error, replaced with the exact fix instead of its own advice."""
+    if not _IDENTITY_HINT.search(raw):
+        return None
+    return (
+        "Git doesn't know who you are on this computer yet. Run these once, then try committing again:\n"
+        '  git config --global user.name "Your Name"\n'
+        '  git config --global user.email "you@example.com"'
+    )
 
 
 def switch_branch(root: Path, name: str) -> str:

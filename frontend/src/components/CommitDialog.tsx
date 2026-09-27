@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, ChevronRight, GitBranch } from 'lucide-react'
+import { ChevronDown, ChevronRight, Copy, GitBranch } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -153,7 +153,7 @@ export function CommitDialog({ pid, open, onOpenChange }: { pid: string; open: b
               <AutoTextarea id="commit-message" minRows={2} value={text} onChange={(e) => setMessage(e.target.value)} />
             </div>
 
-            {commit.error && <p className="text-sm text-destructive">{(commit.error as Error).message}</p>}
+            {commit.error && <CommitError message={(commit.error as Error).message} />}
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => onOpenChange(false)}>
                 Cancel
@@ -182,6 +182,30 @@ function StatusLetter({ status }: { status: Change['status'] }) {
     <span title={s.label} aria-label={s.label} className={cn('flex size-[18px] shrink-0 items-center justify-center rounded font-mono text-[10.5px] font-semibold', s.cls)}>
       {s.l}
     </span>
+  )
+}
+
+/** The git-identity error is multi-line with literal commands; every other error is one line. */
+function CommitError({ message }: { message: string }) {
+  const lines = message.split('\n')
+  const commands = lines.filter((l) => l.trim().startsWith('git config'))
+  if (commands.length === 0) return <p className="text-sm text-destructive">{message}</p>
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+      <p className="text-destructive">{lines[0]}</p>
+      <div className="flex items-start gap-2 rounded-md bg-muted px-3 py-2">
+        <pre className="flex-1 overflow-x-auto whitespace-pre font-mono text-xs">{commands.join('\n')}</pre>
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon-sm"
+          aria-label="Copy commands"
+          onClick={() => void navigator.clipboard.writeText(commands.join('\n'))}
+        >
+          <Copy className="size-3.5" />
+        </Button>
+      </div>
+    </div>
   )
 }
 

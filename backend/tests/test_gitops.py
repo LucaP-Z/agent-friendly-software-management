@@ -171,3 +171,62 @@ def test_switch_blocked_by_uncommitted_changes_reports_files_and_changes_nothing
     assert "P-01-a.md" in msg and "overwritten" in msg
     assert "stash" not in msg.lower() and "abort" not in msg.lower() and "please" not in msg.lower()
     assert _current(repo) == "main" and "my-uncommitted-edit" in f.read_text()  # nothing lost, nothing moved
+
+
+from afsp import gitops as _gitops
+
+# Real wording git prints for this error (stable across versions); reproducing the actual OS-level
+# condition that triggers it (no GECOS full name, unresolvable hostname) isn't practical in a test
+# sandbox — on a normal machine git always falls back to *some* identity — so the detector is tested
+# against captured text directly, and separately that `commit()` correctly replaces it when git does.
+REAL_GIT_IDENTITY_ERROR = """\
+*** Please tell me who you are.
+
+Run
+
+  git config --global user.email "you@example.com"
+  git config --global user.name "Your Name"
+
+to set your account's default identity.
+Omit --global to set the identity only in this repository.
+
+fatal: unable to auto-detect email address (got 'user@hostname.(none)')"""
+
+
+@_pytest.mark.parametrize(
+    "raw",
+    [
+        REAL_GIT_IDENTITY_ERROR,
+        "fatal: unable to auto-detect email address (got 'x@y.(none)')",
+        "*** Please tell me who you are.\n\nfatal: no name was given and auto-detection did not find one either",
+    ],
+)
+def test_friendly_identity_error_replaces_gits_own_wording(raw: str):
+    msg = _gitops._friendly_identity_error(raw)
+    assert msg is not None
+    assert 'git config --global user.name "Your Name"' in msg
+    assert 'git config --global user.email "you@example.com"' in msg
+    assert "auto-detect" not in msg and "please tell me" not in msg.lower()
+
+
+def test_friendly_identity_error_leaves_unrelated_messages_alone():
+    assert _gitops._friendly_identity_error("fatal: pathspec 'x' did not match any files") is None
+
+
+def test_commit_replaces_gits_identity_error_when_it_occurs(client: _Client, project: str, monkeypatch):
+    """Exercises the real commit() path: only the "commit" subcommand is made to fail this way."""
+    base, paths = _prep(client, project)
+    real_git = _gitops._git
+
+    def fake_git(root, *args, **kwargs):
+        if args and args[0] == "commit":
+            raise _gitops.GitError(REAL_GIT_IDENTITY_ERROR)
+        return real_git(root, *args, **kwargs)
+
+    monkeypatch.setattr(_gitops, "_git", fake_git)
+    r = client.post(f"{base}/git/commit", json={"message": "m", "paths": paths})
+    assert r.status_code == 422
+    msg = r.json()["detail"]
+    assert 'git config --global user.name "Your Name"' in msg
+    assert "auto-detect" not in msg
+    assert client.get(f"{base}/git").json()["changes"]  # nothing was committed
