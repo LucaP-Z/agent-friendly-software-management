@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Check, ChevronDown, ChevronRight, FolderGit2, GitCommitHorizontal, Plus, Settings2 } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, FolderGit2, GitCommitHorizontal, PanelLeftClose, PanelLeftOpen, Plus, Settings2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Navigate, Outlet, useNavigate, useParams } from 'react-router-dom'
 import { BranchMenu } from '@/components/BranchMenu'
@@ -63,11 +63,28 @@ function Section({ pid, type, entities, capType }: { pid: string; type: TypeInfo
   )
 }
 
+const SIDEBAR_KEY = 'afsp:sidebarCollapsed'
+
 export default function ProjectLayout() {
   const { pid = '' } = useParams()
   const nav = useNavigate()
   const openProject = useOpenProject()
   const [committing, setCommitting] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_KEY, collapsed ? '1' : '0')
+    } catch {
+      /* private mode etc. */
+    }
+  }, [collapsed])
   const status = useStatus(pid)
   const schema = useSchema()
   const entities = useEntities(pid)
@@ -118,16 +135,29 @@ export default function ProjectLayout() {
         </div>
       </header>
       <div className="flex min-h-0 flex-1">
-        <aside className="w-72 shrink-0 overflow-y-auto border-r p-3">
-          <NavLink to="." end className={({ isActive }) => cn('mb-3 block rounded-md px-2 py-1 text-sm hover:bg-muted', isActive && 'bg-muted font-medium')}>
-            Overview
-          </NavLink>
-          {initialized &&
-            ['persona', 'need', 'feature', 'constraint', 'enabler', 'glossary']
-              .map((k) => byKey.get(k))
-              .filter((t): t is TypeInfo => !!t)
-              .map((t) => <Section key={t.key} pid={pid} type={t} entities={entities.data?.entities ?? []} capType={t.key === 'feature' ? byKey.get('capability') : undefined} />)}
-        </aside>
+        {collapsed ? (
+          <div className="flex w-11 shrink-0 flex-col items-center border-r pt-3">
+            <Button variant="ghost" size="icon-sm" aria-label="Expand sidebar" onClick={() => setCollapsed(false)}>
+              <PanelLeftOpen />
+            </Button>
+          </div>
+        ) : (
+          <aside className="flex w-72 shrink-0 flex-col overflow-y-auto border-r p-3">
+            <div className="mb-1 flex items-center justify-between">
+              <NavLink to="." end className={({ isActive }) => cn('flex-1 rounded-md px-2 py-1 text-sm hover:bg-muted', isActive && 'bg-muted font-medium')}>
+                Overview
+              </NavLink>
+              <Button variant="ghost" size="icon-sm" aria-label="Collapse sidebar" onClick={() => setCollapsed(true)}>
+                <PanelLeftClose />
+              </Button>
+            </div>
+            {initialized &&
+              ['persona', 'need', 'feature', 'constraint', 'enabler', 'glossary']
+                .map((k) => byKey.get(k))
+                .filter((t): t is TypeInfo => !!t)
+                .map((t) => <Section key={t.key} pid={pid} type={t} entities={entities.data?.entities ?? []} capType={t.key === 'feature' ? byKey.get('capability') : undefined} />)}
+          </aside>
+        )}
         <main className="min-w-0 flex-1 overflow-y-auto">
           <Outlet />
         </main>
