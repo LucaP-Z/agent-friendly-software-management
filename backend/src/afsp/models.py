@@ -97,12 +97,15 @@ class AcceptanceCriterion(BaseModel):
 
     @model_serializer(mode="wrap")
     def _prune(self, handler, info: SerializationInfo):
+        """Never drop given/when/then/statement: switching `format` in the UI must not
+
+        discard whichever text isn't currently shown, or it would delete it for good the
+        next time the file is read back. Only `spans` (feature-wide only) is pruned when
+        empty, to keep capability-level criteria free of a field they never use.
+        """
         data = handler(self)
-        if isinstance(info.context, dict) and info.context.get("prune"):
-            for k in ("given", "when", "then") if self.format == "ears" else ("statement",):
-                data.pop(k, None)
-            if not self.spans:
-                data.pop("spans", None)
+        if isinstance(info.context, dict) and info.context.get("prune") and not self.spans:
+            data.pop("spans", None)
         return data
 
 

@@ -87,7 +87,7 @@ Free-form Markdown notes (the "Notes" field in the UI).
 **Serialisation rules**
 
 1. Frontmatter is YAML between `---` lines. The Markdown body is the `body` field, stored verbatim after the closing `---` and a blank line, with leading/trailing blank lines trimmed.
-2. Keys are written **in the model's field order**; nested items likewise. Every known field is always written, except: an `ears` criterion omits `given/when/then`, a `gwt` criterion omits `statement`, and `spans` is omitted when empty.
+2. Keys are written **in the model's field order**; nested items likewise. Every known field is always written, with one exception: `spans` is omitted when empty. In particular, `given`/`when`/`then` and `statement` are **all kept in the file regardless of `format`** — switching a criterion between Given/When/Then and EARS in the UI only changes which one is shown; the other's text stays in the file untouched, so switching back and forth never discards it.
 3. **Unknown keys are preserved**, at the top level and inside nested items (matched by their `id`), and written after the known keys. Hand-added fields and future fields survive a UI save. YAML comments are not preserved.
 4. Multi-line strings are written as block scalars (`|`) so diffs stay readable.
 5. **Deterministic:** parsing a file and writing it back unchanged yields identical bytes, and saving a form with no changes does not touch the file (no write, same hash, no diff).

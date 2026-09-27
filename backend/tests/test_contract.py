@@ -33,10 +33,25 @@ def test_unknown_keys_preserved_top_level_and_nested():
     assert "title: Changed" in out
 
 
-def test_ears_criterion_drops_gwt_fields_from_file():
-    cap = Capability(id="C-01.1", acceptance_criteria=[{"id": "AC-01.1.1", "format": "ears", "statement": "When x, the system shall y"}])
+def test_switching_format_never_discards_the_other_format_s_text():
+    """A criterion always writes all four fields: switching format must not lose data."""
+    cap = Capability(id="C-01.1", acceptance_criteria=[{"id": "AC-01.1.1", "format": "gwt", "given": "g", "when": "w", "then": "t", "statement": ""}])
     out = contract.render(cap).decode()
-    assert "statement:" in out and "given:" not in out
+    assert "given: g" in out and "when: w" in out and "then: t" in out and "statement: ''" in out
+
+    cap.acceptance_criteria[0].format = "ears"
+    cap.acceptance_criteria[0].statement = "When x, the system shall y"
+    raw2 = contract.render(cap)
+    parsed, _ = contract.parse(raw2, Capability)
+    ac = parsed.acceptance_criteria[0]
+    assert ac.format == "ears" and ac.statement == "When x, the system shall y"
+    assert (ac.given, ac.when, ac.then) == ("g", "w", "t")  # not lost by the switch
+
+    # and switching back to gwt brings the original text straight back
+    parsed.acceptance_criteria[0].format = "gwt"
+    back, _ = contract.parse(contract.render(parsed), Capability)
+    ac = back.acceptance_criteria[0]
+    assert (ac.given, ac.when, ac.then) == ("g", "w", "t") and ac.statement == "When x, the system shall y"
 
 
 def test_multiline_strings_use_block_scalars_and_survive():

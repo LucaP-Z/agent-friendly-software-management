@@ -58,10 +58,6 @@ def normalise(e):
     """What the file can faithfully hold: the body is stored trimmed of surrounding blank lines."""
     d = e.model_dump()
     d["body"] = d["body"].strip("\n")
-    # By design a criterion only stores the fields of its chosen format.
-    for ac in d.get("acceptance_criteria", []):
-        for k in ("given", "when", "then") if ac["format"] == "ears" else ("statement",):
-            ac[k] = ""
     return d
 
 
@@ -78,6 +74,19 @@ def test_random_entities_round_trip_losslessly_and_idempotently(seed: int):
         parsed2, front2 = contract.parse(raw2, model)
         assert contract.render(parsed2, front2) == raw, "fixed point not reached"
         assert contract.render(entity) == raw, "deterministic: same input gave different bytes"
+
+
+@pytest.mark.parametrize("seed", range(50))
+def test_flipping_criterion_format_never_touches_the_other_fields(seed: int):
+    """Randomised: switching format back and forth must leave given/when/then/statement untouched."""
+    r = random.Random(seed)
+    cap = rnd_capability(r, 1)
+    for ac in cap.acceptance_criteria:
+        before = (ac.given, ac.when, ac.then, ac.statement)
+        ac.format = "ears" if ac.format == "gwt" else "gwt"
+        parsed, _ = contract.parse(contract.render(cap), Capability)
+        after = next(a for a in parsed.acceptance_criteria if a.id == ac.id)
+        assert (after.given, after.when, after.then, after.statement) == before
 
 
 def test_history_does_not_matter(repo: Path):
