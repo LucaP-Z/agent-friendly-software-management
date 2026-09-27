@@ -225,3 +225,31 @@ frontend/dist/
 
 # macOS
 .DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# Claude Code: settings.json is shared/committed, settings.local.json is per-developer
+.claude/settings.local.json
+
+# Secrets and local credentials, defence in depth on top of the .env rule above
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.crt
+.netrc
+.npmrc
+.aws/
+.ssh/
