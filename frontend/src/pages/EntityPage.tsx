@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { AlertTriangle, CheckCircle2, Loader2, Pencil } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { FormOutline } from '@/components/FormOutline'
 import { SchemaForm } from '@/components/SchemaForm'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -58,60 +59,63 @@ function Editor({ pid, initial, latest, type }: { pid: string; initial: EntityFu
 
   const parent = initial.parent
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-5 px-8 py-8">
-      <div className="flex flex-col gap-2">
-        {parent && (
-          <Link to={`../e/${parent}`} className="text-xs text-muted-foreground hover:underline">
-            ← {parent}
-          </Link>
-        )}
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="font-mono">{initial.id}</Badge>
-          <span className="text-xs text-muted-foreground">{type.label}</span>
-          <span className="ml-auto">
-            <SaveIndicator state={state} />
-          </span>
+    <div className="mx-auto flex max-w-5xl gap-10 px-8 py-8">
+      <div className="flex min-w-0 max-w-3xl flex-1 flex-col gap-5">
+        <div id="entity-overview" className="flex flex-col gap-2">
+          {parent && (
+            <Link to={`../e/${parent}`} className="text-xs text-muted-foreground hover:underline">
+              ← {parent}
+            </Link>
+          )}
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="font-mono">{initial.id}</Badge>
+            <span className="text-xs text-muted-foreground">{type.label}</span>
+            <span className="ml-auto">
+              <SaveIndicator state={state} />
+            </span>
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight">{draft.title || <span className="text-muted-foreground">Untitled</span>}</h1>
+          <p className="font-mono text-xs text-muted-foreground">{initial.path}</p>
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight">{draft.title || <span className="text-muted-foreground">Untitled</span>}</h1>
-        <p className="font-mono text-xs text-muted-foreground">{initial.path}</p>
-      </div>
 
-      {state.kind === 'conflict' && (
-        <div role="alert" className="flex flex-col gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-          <p>
-            <b>This file changed on disk</b> (edited by hand, by git or by an agent) since you opened it. Autosave is paused.
-          </p>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => void reloadFromDisk()}>
-              Load the disk version (discard my edits)
-            </Button>
-            <Button size="sm" variant="destructive" onClick={() => void overwrite()}>
-              Overwrite with my version
+        {state.kind === 'conflict' && (
+          <div role="alert" className="flex flex-col gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+            <p>
+              <b>This file changed on disk</b> (edited by hand, by git or by an agent) since you opened it. Autosave is paused.
+            </p>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => void reloadFromDisk()}>
+                Load the disk version (discard my edits)
+              </Button>
+              <Button size="sm" variant="destructive" onClick={() => void overwrite()}>
+                Overwrite with my version
+              </Button>
+            </div>
+          </div>
+        )}
+        {state.kind === 'error' && (
+          <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            <p>{state.message}</p>
+            <Button size="sm" variant="outline" onClick={retry} className="shrink-0">
+              Retry
             </Button>
           </div>
-        </div>
-      )}
-      {state.kind === 'error' && (
-        <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          <p>{state.message}</p>
-          <Button size="sm" variant="outline" onClick={retry} className="shrink-0">
-            Retry
-          </Button>
-        </div>
-      )}
+        )}
 
-      <SchemaForm
-        schema={type.schema}
-        value={draft}
-        onChange={edit}
-        ctx={{
-          entityId: initial.id,
-          entities: entities.data?.entities ?? [],
-          root: draft,
-          standardCategories: schema.data?.standard_edge_categories ?? [],
-          allocate: async (key) => (await api.allocate(pid, key)).id,
-        }}
-      />
+        <SchemaForm
+          schema={type.schema}
+          value={draft}
+          onChange={edit}
+          ctx={{
+            entityId: initial.id,
+            entities: entities.data?.entities ?? [],
+            root: draft,
+            standardCategories: schema.data?.standard_edge_categories ?? [],
+            allocate: async (key) => (await api.allocate(pid, key)).id,
+          }}
+        />
+      </div>
+      <FormOutline schema={type.schema} draft={draft} className="sticky top-8 hidden w-48 shrink-0 self-start lg:flex" />
     </div>
   )
 }

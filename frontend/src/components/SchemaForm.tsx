@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AutoTextarea } from '@/components/AutoTextarea'
 import { cn } from '@/lib/utils'
-import { defaults, fieldLabel, singular } from '@/lib/formSchema'
+import { defaults, fieldAnchorId, fieldLabel, isOutlineSection, singular } from '@/lib/formSchema'
 import type { JsonSchema, Summary } from '@/lib/api'
 
 export type FormCtx = {
@@ -339,7 +339,7 @@ export function Field(props: FieldProps) {
   else return null
 
   const overBudget = props.name === 'budget_tokens_usd' && typeof value === 'number' && typeof props.ctx.root.budget_usd === 'number' && value > props.ctx.root.budget_usd
-  const isSection = node.type === 'array' && node.items?.type !== 'string' && !node['x-link']
+  const isSection = isOutlineSection(node)
   return (
     <Row label={title} htmlFor={htmlFor} hint={node.description} planned={!!node['x-planned']} warning={overBudget ? 'More than the total budget above.' : undefined} className={cn(isSection && 'mt-2')}>
       {control}
@@ -352,15 +352,17 @@ export function SchemaForm({ schema, value, onChange, ctx }: { schema: JsonSchem
   return (
     <div className="flex flex-col gap-4">
       {props.map(([k, sub]) => (
-        <Field
-          key={k}
-          name={k}
-          node={sub}
-          value={value?.[k]}
-          // clearing the budget also clears the "of which token costs" part, which would otherwise hide with stale data
-          onChange={(v) => onChange(k === 'budget_usd' && v == null ? { ...value, budget_usd: null, budget_tokens_usd: null } : { ...value, [k]: v })}
-          ctx={ctx}
-        />
+        // Jump target for the "on this page" outline: only sections and Notes need one (see isOutlineSection).
+        <div key={k} id={k === 'body' || isOutlineSection(sub) ? fieldAnchorId(k) : undefined} className="scroll-mt-4">
+          <Field
+            name={k}
+            node={sub}
+            value={value?.[k]}
+            // clearing the budget also clears the "of which token costs" part, which would otherwise hide with stale data
+            onChange={(v) => onChange(k === 'budget_usd' && v == null ? { ...value, budget_usd: null, budget_tokens_usd: null } : { ...value, [k]: v })}
+            ctx={ctx}
+          />
+        </div>
       ))}
     </div>
   )
