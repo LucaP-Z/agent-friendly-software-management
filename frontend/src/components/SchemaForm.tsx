@@ -22,12 +22,12 @@ export type FormCtx = {
 const selectClass =
   'h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30'
 
-function Row({ label, hint, planned, warning, children, className }: { label?: string; hint?: string; planned?: boolean; warning?: string; children: ReactNode; className?: string }) {
+function Row({ label, htmlFor, hint, planned, warning, children, className }: { label?: string; htmlFor?: string; hint?: string; planned?: boolean; warning?: string; children: ReactNode; className?: string }) {
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
       {label && (
         <div className="flex items-center gap-2">
-          <Label className="text-[13px] font-medium">{label}</Label>
+          <Label htmlFor={htmlFor} className="text-[13px] font-medium">{label}</Label>
           {planned && (
             <Badge variant="outline" className="h-4 px-1.5 text-[10.5px] font-medium text-muted-foreground">
               Not tracked yet
@@ -59,6 +59,7 @@ function LinkField({ name, node, value, onChange, ctx }: FieldProps) {
   const byId = new Map(candidates.map((c) => [c.id, c]))
   const known = new Map(ctx.entities.map((e) => [e.id, e]))
   const remaining = candidates.filter((c) => !selected.includes(c.id))
+  const addLabel = remaining.length ? `Add ${allowed[0] === 'ac' ? 'criterion' : allowed[0]}` : `No ${allowed[0]} available`
 
   const set = (next: string[]) => onChange(multi ? next : (next[0] ?? ''))
   return (
@@ -80,11 +81,12 @@ function LinkField({ name, node, value, onChange, ctx }: FieldProps) {
       )}
       {(multi || selected.length === 0) && (
         <select
+          aria-label={addLabel}
           className={selectClass}
           value=""
           onChange={(e) => e.target.value && set(multi ? [...selected, e.target.value] : [e.target.value])}
         >
-          <option value="">{remaining.length ? `Add ${allowed[0] === 'ac' ? 'criterion' : allowed[0]}…` : `No ${allowed[0]} available`}</option>
+          <option value="">{remaining.length ? `${addLabel}…` : addLabel}</option>
           {remaining.map((c) => (
             <option key={c.id} value={c.id}>
               {label(c)}
@@ -111,19 +113,23 @@ function StringList({ value, onChange, noun }: { value: string[]; onChange: (v: 
   const [added, setAdded] = useState(false)
   return (
     <div className="flex flex-col gap-1.5">
-      {items.map((s, i) => (
-        <div key={i} className="flex gap-1.5">
-          <Input
-            value={s}
-            autoFocus={added && i === items.length - 1}
-            onBlur={() => setAdded(false)}
-            onChange={(e) => onChange(items.map((x, j) => (j === i ? e.target.value : x)))}
-          />
-          <Button type="button" variant="ghost" size="icon" aria-label="Remove" onClick={() => onChange(items.filter((_, j) => j !== i))}>
-            <X />
-          </Button>
-        </div>
-      ))}
+      {items.map((s, i) => {
+        const itemLabel = `${noun.charAt(0).toUpperCase()}${noun.slice(1)} ${i + 1}`
+        return (
+          <div key={i} className="flex gap-1.5">
+            <Input
+              aria-label={itemLabel}
+              value={s}
+              autoFocus={added && i === items.length - 1}
+              onBlur={() => setAdded(false)}
+              onChange={(e) => onChange(items.map((x, j) => (j === i ? e.target.value : x)))}
+            />
+            <Button type="button" variant="ghost" size="icon" aria-label={`Remove ${itemLabel.toLowerCase()}`} onClick={() => onChange(items.filter((_, j) => j !== i))}>
+              <X />
+            </Button>
+          </div>
+        )
+      })}
       <AddRow compact label={`Add ${noun}`} onClick={() => (setAdded(true), onChange([...items, '']))} />
     </div>
   )
@@ -262,11 +268,14 @@ function ObjectList({ name, node, value, onChange, ctx }: FieldProps) {
 
 export function Field(props: FieldProps) {
   const { node, value, onChange } = props
+  const fieldId = useId()
   const title = fieldLabel(props.name, node)
   let control: ReactNode
+  let htmlFor: string | undefined // set only when the label above can point at exactly one control
 
   if (node['x-link']) control = <LinkField {...props} />
   else if (node.enum && node.enum.length <= 3)
+    // A radiogroup isn't a labelable element (no native <label for>); it carries its own aria-label instead.
     control = (
       <SegmentedControl
         label={title ?? props.name}
@@ -276,9 +285,10 @@ export function Field(props: FieldProps) {
         options={node.enum.map((o) => ({ value: o, label: node['x-option-labels']?.[o] ?? o.charAt(0).toUpperCase() + o.slice(1) }))}
       />
     )
-  else if (node.enum)
+  else if (node.enum) {
+    htmlFor = fieldId
     control = (
-      <select className={selectClass} value={value ?? ''} disabled={!!node['x-readonly']} onChange={(e) => onChange(e.target.value)}>
+      <select id={fieldId} className={selectClass} value={value ?? ''} disabled={!!node['x-readonly']} onChange={(e) => onChange(e.target.value)}>
         {node.enum.map((o) => (
           <option key={o} value={o}>
             {o}
@@ -286,32 +296,38 @@ export function Field(props: FieldProps) {
         ))}
       </select>
     )
-  else if (node.type === 'string')
-    control = node['x-readonly'] ? (
-      <p className="font-mono text-sm">{value}</p>
-    ) : node['x-ui'] ? (
-      <AutoTextarea
-        value={value ?? ''}
-        minRows={node['x-ui'] === 'markdown' ? 6 : 3}
-        className={cn(node['x-ui'] === 'markdown' && 'font-mono text-[13px]')}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    ) : (
-      <Input value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
-    )
-  else if (node.type === 'integer' || node.type === 'number')
-    control = node['x-readonly'] ? (
-      <p className="text-sm">{value}</p>
-    ) : (
-      <Input
-        type="number"
-        min={0}
-        step={node.type === 'integer' ? 1 : 'any'}
-        value={value ?? ''}
-        onChange={(e) => onChange(e.target.value === '' ? (node.nullable ? null : 0) : Number(e.target.value))}
-      />
-    )
-  else if (node.type === 'array' && node.items?.type === 'string') control = <StringList value={value} onChange={onChange} noun={singular(title ?? 'item')} />
+  } else if (node.type === 'string') {
+    if (node['x-readonly']) control = <p className="font-mono text-sm">{value}</p>
+    else {
+      htmlFor = fieldId
+      control = node['x-ui'] ? (
+        <AutoTextarea
+          id={fieldId}
+          value={value ?? ''}
+          minRows={node['x-ui'] === 'markdown' ? 6 : 3}
+          className={cn(node['x-ui'] === 'markdown' && 'font-mono text-[13px]')}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      ) : (
+        <Input id={fieldId} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
+      )
+    }
+  } else if (node.type === 'integer' || node.type === 'number') {
+    if (node['x-readonly']) control = <p className="text-sm">{value}</p>
+    else {
+      htmlFor = fieldId
+      control = (
+        <Input
+          id={fieldId}
+          type="number"
+          min={0}
+          step={node.type === 'integer' ? 1 : 'any'}
+          value={value ?? ''}
+          onChange={(e) => onChange(e.target.value === '' ? (node.nullable ? null : 0) : Number(e.target.value))}
+        />
+      )
+    }
+  } else if (node.type === 'array' && node.items?.type === 'string') control = <StringList value={value} onChange={onChange} noun={singular(title ?? 'item')} />
   else if (node.type === 'array') control = <ObjectList {...props} />
   else if (node.type === 'object')
     return (
@@ -325,7 +341,7 @@ export function Field(props: FieldProps) {
   const overBudget = props.name === 'budget_tokens_usd' && typeof value === 'number' && typeof props.ctx.root.budget_usd === 'number' && value > props.ctx.root.budget_usd
   const isSection = node.type === 'array' && node.items?.type !== 'string' && !node['x-link']
   return (
-    <Row label={title} hint={node.description} planned={!!node['x-planned']} warning={overBudget ? 'More than the total budget above.' : undefined} className={cn(isSection && 'mt-2')}>
+    <Row label={title} htmlFor={htmlFor} hint={node.description} planned={!!node['x-planned']} warning={overBudget ? 'More than the total budget above.' : undefined} className={cn(isSection && 'mt-2')}>
       {control}
     </Row>
   )

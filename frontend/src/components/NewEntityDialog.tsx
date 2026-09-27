@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { api, type TypeInfo } from '@/lib/api'
 import { guardedNavigate } from '@/lib/unsavedGuard'
 
@@ -38,7 +39,10 @@ export function NewEntityDialog({ pid, type, parent, open, onOpenChange }: { pid
             if (title.trim() && !create.isPending) create.mutate()
           }}
         >
-          <Input autoFocus placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <Label htmlFor="new-entity-title" className="sr-only">
+            Title
+          </Label>
+          <Input id="new-entity-title" autoFocus placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
           {create.error && <p className="text-sm text-destructive">{(create.error as Error).message}</p>}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>

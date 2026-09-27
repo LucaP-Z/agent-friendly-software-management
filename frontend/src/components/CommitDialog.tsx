@@ -138,7 +138,9 @@ export function CommitDialog({ pid, open, onOpenChange }: { pid: string; open: b
                 ))}
                 <option value={NEW}>＋ New branch…</option>
               </select>
-              {creating && <Input autoFocus placeholder="new-branch-name, e.g. spec/invoicing" value={newName} onChange={(e) => setNewName(e.target.value)} />}
+              {creating && (
+                <Input aria-label="New branch name" autoFocus placeholder="new-branch-name, e.g. spec/invoicing" value={newName} onChange={(e) => setNewName(e.target.value)} />
+              )}
               {switching && (
                 <p className="text-xs text-muted-foreground">
                   {creating ? 'Creates' : 'Switches to'} <b>{target}</b> first; your files stay as they are and move with you.
