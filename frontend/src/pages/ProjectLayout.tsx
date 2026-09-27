@@ -11,6 +11,7 @@ import { useEntities, useGit, useSchema, useStatus } from '@/hooks/queries'
 import { api, lastProject, type Summary, type TypeInfo } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { useOpenProject } from '@/hooks/useOpenProject'
+import { guardedNavigate } from '@/lib/unsavedGuard'
 
 function EntityLink({ e, indent }: { e: Summary; indent?: boolean }) {
   return (
@@ -104,7 +105,7 @@ export default function ProjectLayout() {
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => nav('/projects')}>
+            <DropdownMenuItem onClick={() => guardedNavigate(() => nav('/projects'))}>
               <Settings2 /> Manage projects…
             </DropdownMenuItem>
           </DropdownMenuContent>

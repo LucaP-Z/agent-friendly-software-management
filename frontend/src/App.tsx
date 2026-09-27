@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-quer
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Toaster } from '@/components/ui/sonner'
 import { api, lastProject } from '@/lib/api'
+import { NavigationGuard } from '@/components/NavigationGuard'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import EntityList from '@/pages/EntityList'
 import EntityPage from '@/pages/EntityPage'
@@ -34,6 +35,7 @@ export default function App() {
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <NavigationGuard />
       </BrowserRouter>
       <Toaster richColors />
       </TooltipProvider>

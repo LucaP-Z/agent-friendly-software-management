@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { api, type TypeInfo } from '@/lib/api'
+import { guardedNavigate } from '@/lib/unsavedGuard'
 
 /** Creating asks for a title first: it becomes the file's slug, which stays fixed afterwards. */
 export function NewEntityDialog({ pid, type, parent, open, onOpenChange }: { pid: string; type: TypeInfo; parent?: string; open: boolean; onOpenChange: (o: boolean) => void }) {
@@ -18,7 +19,7 @@ export function NewEntityDialog({ pid, type, parent, open, onOpenChange }: { pid
       qc.invalidateQueries({ queryKey: ['git', pid] })
       setTitle('')
       onOpenChange(false)
-      nav(`/p/${pid}/e/${e.id}`)
+      guardedNavigate(() => nav(`/p/${pid}/e/${e.id}`))
     },
   })
   return (

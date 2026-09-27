@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiError, api, type EntityFull } from '@/lib/api'
+import { setUnsavedGuard } from '@/lib/unsavedGuard'
 
 export type SaveState =
   | { kind: 'idle' }
@@ -97,6 +98,13 @@ export function useAutosave(pid: string, initial: EntityFull) {
     [adopt],
   )
 
+  /** Bypasses the debounce: used by the header's Retry button and the leave-page confirmation. */
+  const retry = useCallback(() => {
+    clearTimeout(timer.current)
+    timer.current = undefined
+    void save()
+  }, [save])
+
   const reloadFromDisk = useCallback(async () => adopt(await api.entity(pid, initial.id)), [adopt, pid, initial.id])
 
   const overwrite = useCallback(async () => {
@@ -117,6 +125,14 @@ export function useAutosave(pid: string, initial: EntityFull) {
     },
     [save],
   )
+  // A failed save or an unresolved conflict must not vanish unnoticed: register with the
+  // cross-page guard so navigating elsewhere asks first instead of dropping the edit.
+  useEffect(() => {
+    if (state.kind === 'error') setUnsavedGuard({ id: initial.id, retry })
+    else if (state.kind === 'conflict') setUnsavedGuard({ id: initial.id })
+    else setUnsavedGuard(null)
+    return () => setUnsavedGuard(null)
+  }, [state.kind, initial.id, retry])
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
       if (dirty.current || saving.current) e.preventDefault()
@@ -125,5 +141,5 @@ export function useAutosave(pid: string, initial: EntityFull) {
     return () => window.removeEventListener('beforeunload', warn)
   }, [])
 
-  return { draft, edit, state, offer, reloadFromDisk, overwrite }
+  return { draft, edit, state, offer, reloadFromDisk, overwrite, retry }
 }

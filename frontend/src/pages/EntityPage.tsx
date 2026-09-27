@@ -50,7 +50,7 @@ function SaveIndicator({ state }: { state: SaveState }) {
 function Editor({ pid, initial, latest, type }: { pid: string; initial: EntityFull; latest?: EntityFull; type: TypeInfo }) {
   const schema = useSchema()
   const entities = useEntities(pid)
-  const { draft, edit, state, offer, reloadFromDisk, overwrite } = useAutosave(pid, initial)
+  const { draft, edit, state, offer, reloadFromDisk, overwrite, retry } = useAutosave(pid, initial)
 
   useEffect(() => {
     if (latest) offer(latest)
@@ -92,9 +92,12 @@ function Editor({ pid, initial, latest, type }: { pid: string; initial: EntityFu
         </div>
       )}
       {state.kind === 'error' && (
-        <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          {state.message}
-        </p>
+        <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          <p>{state.message}</p>
+          <Button size="sm" variant="outline" onClick={retry} className="shrink-0">
+            Retry
+          </Button>
+        </div>
       )}
 
       <SchemaForm
